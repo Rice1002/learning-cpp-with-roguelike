@@ -1,0 +1,7 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="RougelikeTest.vcxproj" Id="07ad2d64-bcdb-44e8-b65b-34c53d345f25" />
+</Solution>
