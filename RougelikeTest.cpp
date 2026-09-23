@@ -4,6 +4,7 @@
 #include<vector>
 #include<string>
 #include <random>   // 现代 C++ 随机数库
+#include <algorithm>  // 提供 std::min 和 std::max
 const std::string RESET = "\033[0m";
 const std::string YELLOW = "\033[1;33m";
 const std::string WHITE = "\033[37m";
@@ -56,7 +57,21 @@ bool overlaps(const Room& a, const Room& b) {
 		(a.y + a.h <= b.y) || (b.y + b.h <= a.y);
 	return !noOverlap;
 }
-void initMap() {
+// 水平挖走廊（y 固定，x 从 x1 到 x2）
+void carveHLine(int x1, int x2, int y) {
+	// std::min 和 std::max 确保不管 x1 和 x2 谁大谁小，都能正确遍历
+	for (int x = (std::min)(x1, x2); x <= (std::max)(x1, x2); ++x) {
+		map[y][x] = Tile::Floor;
+	}
+}
+
+// 垂直挖走廊（x 固定，y 从 y1 到 y2）
+void carveVLine(int y1, int y2, int x) {
+	for (int y = (std::min)(y1, y2); y <= (std::max)(y1, y2); ++y) {
+		map[y][x] = Tile::Floor;
+	}
+}
+void initMap(Player& player) {
 	// 1. 先把整个地图填满墙
 	map.assign(MAP_H, std::vector<Tile>(MAP_W, Tile::Wall));
 
@@ -98,6 +113,36 @@ void initMap() {
 			}
 		}
 	}
+	// ==================== 生成走廊 ====================
+   // 从第 2 个房间开始，每个房间都和“上一个”房间连接
+	for (size_t i = 1; i < rooms.size(); ++i) {
+		// 计算两个房间的中心点
+		int x1 = rooms[i - 1].x + rooms[i - 1].w / 2;
+		int y1 = rooms[i - 1].y + rooms[i - 1].h / 2;
+
+		int x2 = rooms[i].x + rooms[i].w / 2;
+		int y2 = rooms[i].y + rooms[i].h / 2;
+
+		// 随机选择 L 形的方向（0 或 1）
+		std::uniform_int_distribution<> dirDist(0, 1);
+		int direction = dirDist(gen);
+
+		if (direction == 0) {
+			// 先水平，后垂直
+			carveHLine(x1, x2, y1);
+			carveVLine(y1, y2, x2);
+		}
+		else {
+			// 先垂直，后水平
+			carveVLine(y1, y2, x1);
+			carveHLine(x1, x2, y2);
+		}
+	}
+	if (!rooms.empty()) {
+		// 把玩家放在第一个房间的中心
+		player.x = rooms[0].x + rooms[0].w / 2;
+		player.y = rooms[0].y + rooms[0].h / 2;
+	}
 }
 void render(const Player& player) {
 	clearScreen();
@@ -129,8 +174,8 @@ int main()
 	std::ios::sync_with_stdio(false);
 	enableVT();
 	hideCursor();
-	initMap();
 	Player player;
+	initMap(player);
 	bool running_flag = true;
 	while (running_flag)
 	{
